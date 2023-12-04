@@ -1,7 +1,8 @@
 
 
 const { Markup } = require("telegraf");
-const {Bot, doStart,requestCity, getCity, requestName,getType,getWeight, getPrice, requestPayment, getContact, sendToChannel, getDestination } = require("./utils");
+const {Bot, doStart,requestCity, getCity, requestName,getType,getWeight, getPrice, requestPayment, getContact, sendToChannel, getDestination, requestOrders, returnOrder } = require("./utils");
+const { getOrderDetails, deleteOrder, updateOrderStatus } = require("./db");
 
 Bot.start(async (ctx) => {
     await doStart(ctx);
@@ -33,6 +34,16 @@ Bot.command("new", async (ctx) => {
   }
 });
 
+Bot.command("my", async (ctx) => {
+  if (!ctx.session) {
+    return doStart(ctx);
+  }
+  if (ctx.session.state === "waitForPhoneNumber") {
+    return await ctx.reply("لطفا از کلید ارسال شماره تلفن استفاده نمایید.");
+  }
+  return requestOrders(ctx);
+});
+
 Bot.on("contact", async (ctx) => {
   return getContact(ctx);
 });
@@ -52,6 +63,58 @@ Bot.action("antalya", async (ctx, next) => {
 Bot.action("tehran", async (ctx) => {
   getCity(ctx,"تهران");
 });
+
+Bot.action(/order:\d+/, async (ctx) => {
+
+  if (!ctx.session) {
+    return doStart(ctx);
+  }
+  const orderID = ctx.match[0].split(':')[1]; // Extract the ID from the action callback data
+  
+  return await returnOrder(ctx, orderID);
+
+
+});
+
+Bot.action(/delete:\d+/, async (ctx) => { 
+  const orderID = ctx.match[0].split(':')[1]; // Extract the ID from the action callback data
+  
+  await deleteOrder(orderID)
+  .then(async (res) => {
+    ctx.session.state = "waitforCommand";
+    return await ctx.editMessageText("بار شما با موفقیت حذف شد.",Markup.inlineKeyboard([]));
+  })});
+
+  Bot.action(/confirm:\d+/, async (ctx) => {
+    const orderID = ctx.match[0].split(':')[1]; // Extract the ID from the action callback data
+     const order = await getOrderDetails(orderID);
+     
+     const flag = order.city === "تهران" ? "🇮🇷" : "🇹🇷";
+     const flagD = order.destination === "تهران" ? "🇮🇷" : "🇹🇷";
+     const typeIcon = order.type === "مدارک" ? "📄" : order.type === "لباس" ? "👕" : "👜";
+     const weightIcon = "⚖️";
+     const priceIcon = "💰";
+     const phoneIcon = "📱";
+     
+     const text = "بار مسافری\n\n" +  
+       `<b> نام صاحب بار:</b> ${ctx.session.name}\n\n` +
+       `<b>شهر مبدا:</b> ${order.city}${flag}\n\n` +
+       `<b>شهر مقصد:</b> ${order.destination}${flagD}\n\n` +
+       `<b>نوع بار:</b> ${typeIcon} ${order.type}\n\n` +
+       `<b>وزن تقریبی:</b> ${weightIcon} ${order.weight} کیلوگرم\n\n` +
+       `<b>دستمزد پرداختی:</b> ${priceIcon} ${order.price} تومان\n\n` +
+       `${phoneIcon} +${ctx.session.phoneNumber}\n\n`;
+
+
+    await updateOrderStatus(orderID,'confirmed')
+    .then(async (res) => {
+      ctx.session.state = "waitforCommand";
+      sendToChannel(text);
+      return await ctx.editMessageText("بار شما با موفقیت به کانال ارسال شد.",Markup.inlineKeyboard([]));
+    })});
+
+    
+
 
 // destination city
 
