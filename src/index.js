@@ -2,9 +2,17 @@
 
 const { Markup } = require("telegraf");
 const {Bot, doStart,requestCity, getCity, requestName,getType,getWeight, getPrice, requestPayment, getContact, sendToChannel, getDestination, requestOrders, returnOrder } = require("./utils");
-const { getOrderDetails, deleteOrder, updateOrderStatus } = require("./db");
+const { getOrderDetails, deleteOrder, updateOrderStatus, getUserDraftOrdersCount } = require("./db");
 
 Bot.start(async (ctx) => {
+
+
+    // const userString = ctx.payload;
+    // if(userString){
+    //   console.log("userString",userString);
+    // }
+
+
     await doStart(ctx);
     
 });
@@ -24,8 +32,16 @@ Bot.command("new", async (ctx) => {
   if (ctx.session.state === "waitForPhoneNumber") {
     return await ctx.reply("لطفا از کلید ارسال شماره تلفن استفاده نمایید.");
   }
+  const draftcount = await getUserDraftOrdersCount(ctx.from.id);
+
+  if (draftcount === 1) {
+    return await ctx.reply("شما یک بار در حال انتظار دارید. لطفا آن را تکمیل نمایید.");
+  }
 
   if (ctx.session.state === "waitforCommand") {
+    
+    
+    
     if (!ctx.session.name) {
       requestName(ctx);
     }else{
@@ -64,15 +80,14 @@ Bot.action("tehran", async (ctx) => {
   getCity(ctx,"تهران");
 });
 
-Bot.action(/order:\d+/, async (ctx) => {
+Bot.action(/^order:(\d+)$/, async (ctx) => {
 
   if (!ctx.session) {
     return doStart(ctx);
   }
-  const orderID = ctx.match[0].split(':')[1]; // Extract the ID from the action callback data
-  
+  const orderID = ctx.match[1];
+   
   return await returnOrder(ctx, orderID);
-
 
 });
 
@@ -112,6 +127,14 @@ Bot.action(/delete:\d+/, async (ctx) => {
       sendToChannel(text);
       return await ctx.editMessageText("بار شما با موفقیت به کانال ارسال شد.",Markup.inlineKeyboard([]));
     })});
+
+    Bot.action(/^archive:(\d+)$/, async (ctx) => {
+      const orderID = ctx.match[1];
+      await updateOrderStatus(orderID,'archived')
+      .then(async (res) => {
+        ctx.session.state = "waitforCommand";
+        return await ctx.editMessageText("بار شما با موفقیت بایگانی شد.",Markup.inlineKeyboard([]));
+      })});
 
     
 

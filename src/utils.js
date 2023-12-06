@@ -271,16 +271,21 @@ async function requestOrders(ctx) {
     if (orders.length === 0) {
       return await ctx.reply("شما هیچ سفارشی ثبت نکرده اید.");
     }
-    const inlinekeyboard = [];
-    orders.forEach( order => {
-      const flag = order.city === "تهران" ? "🇮🇷" : "🇹🇷";
-      const flagD = order.destination === "تهران" ? "🇮🇷" : "🇹🇷";
-      const typeIcon = order.type === "مدارک" ? "📄" : order.type === "لباس" ? "👕" : "👜";
+
+
+    orders.forEach(order => {
+      returnOrder(ctx,order.id);
+    });
+    // const inlinekeyboard = [];
+    // orders.forEach( order => {
+    //   const flag = order.city === "تهران" ? "🇮🇷" : "🇹🇷";
+    //   const flagD = order.destination === "تهران" ? "🇮🇷" : "🇹🇷";
+    //   const typeIcon = order.type === "مدارک" ? "📄" : order.type === "لباس" ? "👕" : "👜";
   
 
-      inlinekeyboard.push(Markup.button.callback(`${typeIcon} ${order.type} از ${order.city}${flag} به ${order.destination}${flagD}`, `order:${order.id}`));
-    });
-    return await ctx.reply("لیست سفارشات شما", Markup.inlineKeyboard(inlinekeyboard));
+    //   inlinekeyboard.push(Markup.button.callback(`${typeIcon} ${order.type} از ${order.city}${flag} به ${order.destination}${flagD}`, `order:${order.id}`));
+    // });
+    // return await ctx.reply("لیست سفارشات شما", Markup.inlineKeyboard(inlinekeyboard));
   }
 
   async function returnOrder(ctx, order_id) {
@@ -307,9 +312,10 @@ async function requestOrders(ctx) {
         Markup.button.callback("حذف سفارش", `delete:${order.id}`),
         //confirm order
         Markup.button.callback("تایید و ارسال به کانال", `confirm:${order.id}`),
-      ] : [];
+      ] : [Markup.button.callback("بایگانی سفارش", `archive:${order.id}`),];
       
-    return await ctx.editMessageText(text,{parse_mode:"HTML",reply_markup:{inline_keyboard: [inlinekeyboard]}});
+    return await ctx.reply(text,{parse_mode:"HTML",reply_markup:{inline_keyboard: [inlinekeyboard]}});
+    // return await ctx.editMessageText(text,{parse_mode:"HTML",reply_markup:{inline_keyboard: [inlinekeyboard]}});
   }
 
 

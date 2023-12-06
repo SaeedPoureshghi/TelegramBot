@@ -71,7 +71,7 @@ function insertOrder(user_id, city, destination, type, weight, price, status) {
 async function getOrders(user_id) {
     return new Promise((resolve,reject)=>{
         db.serialize(function () {
-            db.all(`SELECT * FROM tbl_orders WHERE user_id = ?`,[user_id],function (err,rows) {
+            db.all(`SELECT * FROM tbl_orders WHERE user_id = ? and status <> 'archived'`,[user_id],function (err,rows) {
                 if (err) {
                     console.log(err);
                     reject(err);
@@ -123,6 +123,19 @@ async function  updateOrderStatus(orderId, status) {
         });
     });
 }
+async function getUserDraftOrdersCount(user_id) {
+    return new Promise((resolve,reject)=>{
+        db.serialize(function () {
+            db.get(`SELECT count(*) as count FROM tbl_orders WHERE user_id = ? and status = 'draft'`,[user_id],function (err,row) {
+                if (err) {
+                    console.log(err);
+                    reject(err);
+                }
+                resolve(row.count);
+            });
+        });
+    });
+}
 
 
 
@@ -134,3 +147,4 @@ exports.getOrders = getOrders;
 exports.getOrderDetails = getOrderDetails;
 exports.deleteOrder = deleteOrder;
 exports.updateOrderStatus = updateOrderStatus;
+exports.getUserDraftOrdersCount = getUserDraftOrdersCount;
